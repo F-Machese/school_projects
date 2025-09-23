@@ -1,0 +1,166 @@
+---
+title: "Statistical Computing Practical Test in R-Group B"
+author: "Machese Fred Isaac"
+date: "2025-09-22"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Section A
+
+```{r Foundations and Packages}
+# Install and load packages
+install.packages("tidyverse")
+install.packages("haven")
+install.packages("readxl")
+install.packages("ggplot2")
+library(tidyverse)
+library(haven)
+library(readxl)
+library(ggplot2)
+
+# R object
+x <- 20
+y <- 8
+x * y
+```
+
+## Section B
+
+```{r Importing Data}
+# Import files
+# SAS
+library(haven)
+employees <- read_sas("employees.sas7bdat")
+
+# SPSS
+health <- read_sav("health.sav")
+
+# Stata
+surveydata <- read_dta("surveydata.dta")
+
+# CSV
+library(readr)
+products <- read_csv("product.csv")
+
+# Excel (sheet 2)
+library(readxl)
+attendance <- read_excel("attendance.xlsx", sheet = 1)
+
+# Load iris dataset
+data(iris)
+
+# Export iris to various forms
+# CSV
+write_csv(iris, "iris.csv")
+
+# Excel
+# Load writexl package
+install.packages("writexl")
+library(writexl)
+write_xlsx(iris, "iris.xlsx")
+
+# SPSS
+write_sav(iris, "iris.sav")
+
+# SAS
+write_sas(iris, "iris.sas7bdat")
+
+# Stata
+write_dta(iris, "iris.dta")
+```
+
+### SECTION C
+
+```{r EDA}
+# First and last 8 rows of iris
+head(iris, 8)
+tail(iris, 8)
+
+# Structure of iris
+str(iris)
+
+# Mean of Sepal.Length and Standard deviation of Petal.Width
+mean(iris$Sepal.Length)
+sd(iris$Petal.Width)
+
+# Frequency table of the variable Species
+table(iris$Species)
+
+# Average Sepal.Length grouped by Species
+library(dplyr)
+iris %>%
+  group_by(Species) %>%
+  summarise(Average_Sepal_Length = mean(Sepal.Length))
+
+# Remove the dataset iris from your environment
+rm(iris)
+```
+
+#### SECTION D
+
+```{r Data Visualization}
+# Load ggplot2
+library(ggplot2)
+
+# A histogram of Sepal.Length from iris
+ggplot(iris, aes(x = Sepal.Length)) +
+  geom_histogram(binwidth = 0.5, fill = "blue", color = "black")
+
+# A scatter plot of Sepal.Length vs Petal.Length with points colored by Species
+ggplot(iris, aes(x = Sepal.Length, y = Petal.Length, color = Species)) +
+  geom_point()
+
+# A boxplot of Sepal.Width grouped by Species
+ggplot(iris, aes(x = Species, y = Sepal.Width, fill = Species)) +
+  geom_boxplot()
+```
+
+##### SECTION E
+
+# A short paragraph in plain text describing iris
+The iris dataset contains measurements of flowers, including Sepal.Length, Sepal.Width, Petal.Length, and Petal.Width.
+
+# The word useful in bold
+**useful**
+  
+
+```{r Code Chunk }
+# A code chunk that shows the first 10 rows of iris
+head(iris, 10)  
+```
+
+##### SECTION F
+
+```{r Applied Case Study}
+
+# Load fivethirtyeight package and bechdel dataset
+library(fivethirtyeight)
+library(dplyr)
+library(ggplot2)
+data(bechdel)
+
+# Number of films that passed the Bechdel test
+sum(bechdel$binary == "PASS")
+
+# Decade with the highest number of movies recorded
+bechdel %>%
+  mutate(decade = (year %/% 10) * 10) %>%
+  count(decade, sort = TRUE)
+
+# Subset the dataset to include only films after the year 2000
+bechdel_after2000 <- subset(bechdel, year > 2000)
+
+# Bar plot for movies that passed vs failed the Bechdel test
+ggplot(bechdel, aes(x = binary)) +
+  geom_bar(fill = "steelblue") +
+  labs(title = "Bechdel Test Results",
+       x = "Result",
+       y = "Number of Films")
+```
+
