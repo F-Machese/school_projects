@@ -25,7 +25,6 @@ library(readxl)
 library(ggplot2)
 ```
 
-
 ```{r R Object}
 x <- 20
 y <- 8
