@@ -2,9 +2,7 @@
 title: "Statistical Computing Practical Test in R-Group B"
 author: "Machese Fred Isaac"
 date: "2025-09-22"
-output:
-  word_document: default
-  pdf_document: default
+output: pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -49,7 +47,7 @@ surveydata <- read_dta("surveydata.dta")
 library(readr)
 products <- read_csv("product.csv")
 
-# Excel (sheet 2)
+# Excel (sheet 1)
 library(readxl)
 attendance <- read_excel("attendance.xlsx", sheet = 1)
 
