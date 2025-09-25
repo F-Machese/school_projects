@@ -131,7 +131,7 @@ The iris dataset contains measurements of flowers, including Sepal.Length, Sepal
 **useful**
   
 
-```{r Code Chunk }
+```{r First 10 rows of iris}
 # A code chunk that shows the first 10 rows of iris
 head(iris, 10)  
 ```
