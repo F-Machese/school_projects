@@ -1,0 +1,1047 @@
+---
+title: "Statistical Computing Group Coursework"
+author: "SHARKS GROUP"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    latex_engine: xelatex   
+    keep_tex: true           
+geometry: margin=1in        
+fontsize: 11pt
+mainfont: "TeX Gyre Termes"
+sansfont: "TeX Gyre Heros"      
+monofont: "DejaVu Sans Mono"  
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# SHARKS GROUP MEMBERS
+
+| **Number** | **Name**             | **Registration Number** |
+|------------|----------------------|-------------------------|
+| 1          | Machese Fred Isaac   | 24/U/STD/06893/PD       |
+| 2          | Muyira Jesse British | 24/U/STD/08038/PD       |
+| 3          | Irumba Isah Patience | 24/U/STD/05116/PD       |
+| 4          | Nabukeera Melisa     | 24/U/STD/08326/PD       |
+| 5          | Nabwire Mercy Orato  | 24/U/STD/08414/PD       |
+
+: Group Members and Their Registration Numbers.
+
+## Part A: Exploring and Selecting Data
+
+```{r Load packages}
+# Load necessary packages
+library(tidyverse)
+```
+
+```{r Load the datasets}
+# Load the datasets
+Leicester <- read.csv("~/Desktop/RStudio_CW/2011_OAC_Raw_uVariables_Leicester.csv")
+Lookup <- read.csv("~/Desktop/RStudio_CW/2011_OAC_Raw_uVariables_Lookup.csv")
+# View the structure of the datasets
+str(Leicester)
+str(Lookup)
+# View the column names of the datasets
+colnames(Leicester)
+colnames(Lookup)
+# View the datasets
+View(Leicester)
+View(Lookup)
+```
+
+```{r Missing and Duplicate values}
+# Check for missing values in the datasets
+sum(is.na(Leicester))
+sum(is.na(Lookup))
+# Check for missing values in each column of the datasets
+colSums(is.na(Leicester))
+colSums(is.na(Lookup))
+# Check for duplicates in the datasets
+sum(duplicated(Leicester))
+sum(duplicated(Lookup))
+```
+
+```{r}
+# rename the columns in Leicester using the VariableTitle from Lookup
+Leicester_renamed <- Leicester
+for(i in 1:nrow(Lookup)) {
+  colnames(Leicester_renamed)[colnames(Leicester_renamed) == Lookup$VariableCode[i]] <- Lookup$VariableTitle[i]
+}
+# View the renamed dataset
+View(Leicester_renamed)
+```
+
+```{r}
+# Define relevant units
+relevant_units <- c("Household", "Dwelling", "Household_Spaces", "Pop_Household_16_Over")
+
+# Get descriptive names of housing variables
+housing_vars <- Lookup$VariableTitle[Lookup$VariableStatisticalUnit %in% relevant_units]
+
+# Subset using select()
+Leicester_housing <- Leicester_renamed %>%
+  select(OA11CD, all_of(housing_vars))
+
+# Inspect
+head(Leicester_housing)
+```
+
+**Relevance of selecting columns**
+Selecting relevant columns allows for focused analysis on particular aspects and characteristics forexample housing hence improving efficiency and clarity in understanding patterns, trends and issues within Leicester.
+
+```{r}
+# Column names of the housing dataset
+colnames(Leicester_housing)
+```
+
+```{r}
+# Filter OAs where more than 50% of households are rented
+Rented_OAs <- Leicester_housing %>%
+  mutate(Percent_Rented = (Social_rented + Private_rented) / Total_Households * 100) %>%
+  filter(Percent_Rented > 50) %>%
+  summarise(Num_Of_OAs = n()) %>%
+  pull(Num_Of_OAs)
+
+# Rented OAs In Leicester
+Rented_OAs
+```
+
+**Implications of high rental rates**
+1.  High rental rates may indicate affordability issues, leading to increased demand for social housing and potential overcrowding.
+2. Areas with high rental populations may experience higher turnover rates, impacting community cohesion and stability.
+
+### Part B: Transformation and Computation
+
+```{r}
+# Create new variables showing the proportion of owner-occupied dwellings and
+#the average household size
+Leicester_housing <- Leicester_housing %>%
+  mutate(
+    Proportion_Owner_Occupied = `Owned_and_Shared_Ownership` / `Total_Households`,
+    Avg_Household_Size = `Total_Population_in_Households_16_and_over` / `Total_Households`
+  )
+
+# View the dataset
+View(Leicester_housing)
+```
+
+**Relevance of these variables**
+1. **Proportion of Owner-Occupied Dwellings**: Measures how many households own their dwelling. A higher proportion indicates economic stability and investment in the community, while a lower proportion may suggest economic challenges and a transient population.
+2. **Average Household Size**: Measures average number of people per household. This provides insights into living arrangements and potential housing needs, with larger household sizes potentially indicating overcrowding or multi-generational living situations.
+
+*Understanding these variables helps identify areas with housing affordability issues, economic vulnerability, and community stability, guiding policy decisions and resource allocation to improve living conditions in Leicester.*
+
+```{r}
+# OAs with high household size (≥ 4) and low ownership (< 30%)
+High_Household_Low_Ownership_OAs <- Leicester_housing %>%
+  filter(Avg_Household_Size >= 4 & Proportion_Owner_Occupied < 0.3) %>%
+  nrow()
+
+# Number of OAs
+High_Household_Low_Ownership_OAs
+```
+
+**Implications of high household size and low ownership High household size (≥4)**
+1. Indicates larger families, possibly multi-generational households or shared living arrangements.
+2. Could suggest higher dependency ratios, more children, or combined households due to economic factors.
+
+**Low ownership (\<30%)**
+1. Most households are rented, possibly social housing or private rentals. 
+2. May indicate less economic stability, or a younger population less likely to own property.
+
+**Implications of both aspects**
+1. High household sizes may indicate overcrowded living conditions, leading to health and safety concerns.
+2. Low ownership rates may reflect economic challenges, limiting residents' ability to invest in their homes and communities.
+
+*These areas may require increased social services and affordable housing initiatives to support residents' needs.*
+
+```{r}
+high_size_low_ownership <- Leicester_housing %>%
+  filter(`Avg_Household_Size` >= 4, `Proportion_Owner_Occupied` < 0.3)
+
+# View the first few rows
+high_size_low_ownership
+
+# Count how many OAs satisfy this
+num_OAs <- nrow(high_size_low_ownership)
+num_OAs
+```
+
+**Implications of high household size and low ownership**
+1. High average household sizes may indicate overcrowded living conditions, leading to health and safety concerns.
+2. Larger households may place additional strain on local resources and services, such as schools, healthcare, and public transportation.
+3. Low ownership rates may reflect economic challenges, with families failing to afford housing, potentially leading to lower overall living standards.
+
+```{r}
+# Rank OAs by average household size.
+# Top 10 OAs by average household size
+Top_10_OAs <- Leicester_housing %>%
+  arrange(desc(Avg_Household_Size)) %>%
+  slice_head(n = 10) %>%
+  select(OA11CD, Avg_Household_Size)
+
+# View the top 10 OAs
+View(Top_10_OAs)
+
+# Bottom 10 OAs by average household size
+Bottom_10_OAs <- Leicester_housing %>%
+  arrange(Avg_Household_Size) %>%
+  slice_head(n = 10) %>%
+  select(OA11CD, Avg_Household_Size)
+
+# View the bottom 10 OAs
+View(Bottom_10_OAs)
+```
+
+**Implications of high and low household sizes**
+1. Low average household sizes may indicate a higher proportion of elderly residents living alone, which can lead to social isolation and increased healthcare needs.
+2. Smaller households may reflect greater economic stability, with individuals or couples able to afford their own housing.
+3. Areas with low household sizes may experience different housing market dynamics, potentially leading to higher demand for smaller housing units and impacting affordability.
+
+**Expected differences between these groups**
+The top 10 OAs with high average household sizes may face challenges related to overcrowding,more children/younger population, higher dependecy ratios, resource strain, and economic difficulties, **while** the bottom 10 OAs with low average household sizes may have a higher proportion of elderly residents, greater economic stability, and different housing market dynamics.
+
+#### Part C: Summarization and Grouping
+
+```{r}
+# add supgrpcode and supgrpname to Leicester_housing from Leicester_renamed using OA11CD
+Leicester_housing <- Leicester_housing %>%
+  left_join(Leicester_renamed %>% select(OA11CD, supgrpcode, supgrpname), by = "OA11CD")
+# add median age to Leicester_housing from Leicester_renamed using OA11CD
+Leicester_housing <- Leicester_housing %>%
+  left_join(
+    Leicester_renamed %>% select(OA11CD, Median_age),
+    by = "OA11CD"
+  )
+# View the updated dataset
+head(Leicester_housing)
+```
+
+```{r}
+# Group by OAC Supergroup and compute average household size, median age,
+# and ownership proportion
+Leicester_oac_summary <- Leicester_housing %>%
+  group_by(supgrpname) %>%
+  summarise(
+    Avg_Household_Size = mean(Avg_Household_Size, na.rm = TRUE),
+    Median_Age = median(Median_age, na.rm = TRUE),
+    Avg_Proportion_Owner = mean(Proportion_Owner_Occupied, na.rm = TRUE)
+  ) %>%
+  arrange(desc(Avg_Household_Size))
+
+# View the summary
+View(Leicester_oac_summary)
+```
+
+**Interpretation of variations**
+1.  Variations in average household size across OAC Supergroups may reflect differing family structures, cultural norms, and economic conditions. Larger household sizes may indicate multi-generational living or higher birth rates, while smaller sizes may suggest more single-person households or couples without children.
+2. Differences in median age can highlight the demographic composition of each Supergroup. Younger median ages may indicate areas with more families and children, while older median ages could suggest a higher proportion of retired population.
+3. Variations in ownership proportions can reflect economic stability and housing market conditions. Higher ownership rates may indicate more affluent areas with stable populations, while lower rates could suggest higher rental markets, potentially linked to transient populations or economic challenges.
+
+*Understanding these differences can inform targeted policy interventions, resource allocation, and community support initiatives tailored to the specific needs of each OAC Supergroup in Leicester.*
+
+```{r}
+# Average unemployment per OAC group
+# Add labor market variables to Leicester_housing from Leicester_renamed using OA11CD
+Leicester_housing <- Leicester_housing %>%
+  left_join(
+    Leicester_renamed %>%
+      select(OA11CD,
+             Economically_active_Employee_Parttime,
+             Economically_active_Employee_Fulltime,
+             Economically_active_Selfemployed,
+             Economically_active_Unemployed,
+             Economically_active_Fulltime_student,
+             Unemployed_Age_16_to_24,
+             Unemployed_Age_50_to_74,
+             Unemployed_Never_worked,
+             Longterm_unemployed),
+    by = "OA11CD"
+  )
+# View the updated dataset
+head(Leicester_housing)
+
+# Total labourforce
+Leicester_housing <- Leicester_housing %>%
+  mutate(
+    Total_Labour_Force = Economically_active_Employee_Parttime +
+      Economically_active_Employee_Fulltime +
+      Economically_active_Selfemployed +
+      Economically_active_Unemployed +
+      Economically_active_Fulltime_student +
+      Unemployed_Age_16_to_24 +
+      Unemployed_Age_50_to_74 +
+      Unemployed_Never_worked +
+      Longterm_unemployed
+  )
+
+
+# Compute total_employed and total_unemployed
+Leicester_housing <- Leicester_housing %>%
+  mutate(
+    Total_Employed = Economically_active_Employee_Parttime +
+      Economically_active_Employee_Fulltime +
+      Economically_active_Selfemployed +
+      Economically_active_Fulltime_student,
+    Total_Unemployed = Economically_active_Unemployed +
+      Unemployed_Age_16_to_24 +
+      Unemployed_Age_50_to_74 +
+      Unemployed_Never_worked +
+      Longterm_unemployed
+  )
+
+# Add grpname to Leicester_housing from Leicester_renamed using OA11CD
+Leicester_housing <- Leicester_housing %>%
+  left_join(Leicester_renamed %>% select(OA11CD, grpname), by = "OA11CD")
+
+# Compute average unemployment per OAC group
+OAC_unemployment <- Leicester_housing %>%
+  group_by(grpname) %>%
+  summarise(
+    Avg_Unemployed = mean(Total_Unemployed, na.rm = TRUE)
+  ) %>%
+  arrange(desc(Avg_Unemployed))
+
+# View the unemployment summary
+View(OAC_unemployment)
+
+# Top 3 OAC groups with highest average unemployment
+Top_3_OAC_Unemployment <- OAC_unemployment %>%
+  slice_head(n = 3)
+
+# View the top 3 OAC groups
+View(Top_3_OAC_Unemployment)
+```
+
+**Interpretation of high unemployment in certain OAC groups**
+1. Certain OAC groups may be concentrated in industries that are more vulnerable to economic downturns, leading to higher unemployment rates.
+2. Some groups may have a workforce with skills that do not align with the current job market demands, resulting in higher unemployment.
+3. Age, education level, and other demographic factors within these groups may contribute to higher unemployment rates, such as younger populations or lower educational attainment.
+
+```{r}
+# compute mean, sd, min, max for socio-economic variables using across()
+ # Identify socio-economic variables
+socio_econ_vars <- Lookup %>%
+  filter(VariableDomain == "Socio-Economic") %>%
+  pull(VariableTitle)
+
+# Show any duplicate column names
+colnames(Leicester_renamed)[duplicated(colnames(Leicester_renamed))]
+# Make them unique automatically
+names(Leicester_renamed) <- make.unique(names(Leicester_renamed))
+# Confirm no duplicates
+any(duplicated(names(Leicester_renamed)))
+
+# Summarise again
+socio_econ_vars <- Lookup %>%
+  filter(VariableDomain == "Socio-Economic") %>%
+  pull(VariableTitle)
+
+# Modify the pivot step to handle underscores properly
+socio_econ_summary <- Leicester_renamed %>%
+  summarise(across(all_of(socio_econ_vars),
+                   list(mean = ~mean(. , na.rm = TRUE),
+                        sd   = ~sd(. , na.rm = TRUE),
+                        min  = ~min(. , na.rm = TRUE),
+                        max  = ~max(. , na.rm = TRUE)))) %>%
+  pivot_longer(
+    everything(),
+    names_to = c("variable", "stat"),
+    names_sep = "_(?=[^_]+$)",  # Splits the name only on last underscore
+    values_to = "value",
+    names_transform = list(stat = tolower)
+  ) %>%
+  pivot_wider(
+    names_from = stat,
+    values_from = value
+  )
+View(socio_econ_summary)
+
+# Remove duplicate values
+socio_econ_summary <- socio_econ_summary %>%
+  distinct(variable, .keep_all = TRUE)
+View(socio_econ_summary)
+```
+
+**Interpretation of summary statistics**
+1. **Mean**: The average value of each socio-economic variable provides insights into the general living conditions and economic status of the population in Leicester. For example, a high mean income level may indicate a relatively affluent area, while a low mean may suggest economic challenges.
+2. **Standard Deviation (SD)**: The SD indicates the variability or dispersion of the socio-economic variables. A high SD suggests significant disparities within the population, such as income inequality or varying levels of education, while a low SD indicates more uniformity.
+3. **Minimum and Maximum**: The min and max values highlight the range of each socio-economic variable. Extreme values can point to outliers or specific subgroups within the population that may require targeted interventions, such as areas with very high unemployment or low educational attainment.
+
+*Overall, these summary statistics help identify key socio-economic trends and disparities within Leicester, guiding policymakers and community organizations in addressing the needs of different population segments.*
+
+##### Part D: Advanced Wrangling and Insight Generation
+
+```{r}
+# Compute a Housing Stress Index = (Renting households % / Owner-occupied %)
+# × 100
+Leicester_housing <- Leicester_housing %>%
+  mutate(
+    Renting_Households_Percent = (Social_rented + Private_rented) / Total_Households * 100,
+    Owner_Occupied_Percent = Proportion_Owner_Occupied * 100,
+    Housing_Stress_Index = (Renting_Households_Percent / Owner_Occupied_Percent) * 100
+  )
+
+# Summarize mean and sd by OAC Supergroup
+Housing_Stress_Summary <- Leicester_housing %>%
+  group_by(supgrpname) %>%
+  summarise(
+    Mean_Housing_Stress_Index = mean(Housing_Stress_Index, na.rm = TRUE),
+    SD_Housing_Stress_Index = sd(Housing_Stress_Index, na.rm = TRUE)
+  ) %>%
+  arrange(desc(Mean_Housing_Stress_Index))
+# View the summary
+View(Housing_Stress_Summary)
+
+# Check which rows are INF
+Leicester_housing %>%
+  filter(supgrpname %in% c("Cosmopolitans", "Ethnicity Central") &
+         Owner_Occupied_Percent == 0) %>%
+  select(supgrpname, Renting_Households_Percent, Owner_Occupied_Percent, Housing_Stress_Index)
+
+# Replace INF values with NA
+Leicester_housing <- Leicester_housing %>%
+  mutate(Housing_Stress_Index = ifelse(is.infinite(Housing_Stress_Index), NA, Housing_Stress_Index))
+
+# Recompute the summary without INF values
+Housing_Stress_Summary <- Leicester_housing %>%
+  group_by(supgrpname) %>%
+  summarise(
+    Mean_Housing_Stress_Index = mean(Housing_Stress_Index, na.rm = TRUE),
+    SD_Housing_Stress_Index = sd(Housing_Stress_Index, na.rm = TRUE)
+  ) %>%
+  arrange(desc(Mean_Housing_Stress_Index))
+# View the updated summary
+View(Housing_Stress_Summary)
+```
+
+**Implications of Housing Stress Index**
+1. A high index indicates a greater proportion of renting households relative to owner-occupied households. This suggests that many residents may face housing affordability challenges, as renting can be more expensive and less stable than owning a home. Areas with high housing stress may experience increased demand for social housing and rental assistance programs.
+2. A low index suggests a higher proportion of owner-occupied households, indicating greater economic stability and investment in the community. Residents in these areas may have more control over their housing costs and are less likely to face eviction or rent increases.
+
+*Understanding the Housing Stress Index across different OAC Supergroups can help policymakers identify areas in need of targeted housing interventions, such as affordable housing development, rent control measures, or home-ownership programs which is crucial for improving overall community well-being and economic stability.*
+
+```{r}
+# OAs above-average population density
+
+# Add Density_(number_of_persons_per_hectare) to Leicester_housing from Leicester_renamed using OA11CD
+Leicester_housing <- Leicester_housing %>%
+  left_join(
+    Leicester_renamed %>%
+      select(OA11CD, `Density_(number_of_persons_per_hectare)`),
+    by = "OA11CD"
+  )
+
+# Compute average population density
+Avg_Pop_Density <- mean(Leicester_housing$`Density_(number_of_persons_per_hectare)`, na.rm = TRUE)
+Avg_Pop_Density
+
+# Filter OAs with above-average population density
+High_Density_OAs <- Leicester_housing %>%
+  filter(`Density_(number_of_persons_per_hectare)` > Avg_Pop_Density)
+
+# Number of high-density OAs
+num_High_Density_OAs <- nrow(High_Density_OAs)
+num_High_Density_OAs
+```
+
+**Implications of high population density**
+1. High population density can lead to overcrowded living conditions, which may impact residents' health and well-being.
+2. Areas with high population density may experience increased strain on local resources and services, such as schools, healthcare, and public transportation.
+3. High-density areas may have higher housing costs, making it difficult for lower-income residents to afford adequate housing.
+4. High population density can influence social interactions and crime rates, potentially leading to both positive and negative outcomes.
+
+```{r}
+# Add Age_groups to Leicester_housing from Leicester_renamed using OA11CD
+age_cols <- c("Age_0_to_4", "Age_5_to_9", "Age_10_to_14", "Age_15_to_19",
+              "Age_20_to_24", "Age_25_to_29", "Age_30_to_44", "Age_45_to_59",
+              "Age_60_to_64", "Age_65_to_74", "Age_75_to_84", "Age_85_to_89", 
+              "Age_90_and_over")
+Leicester_housing <- Leicester_housing %>%
+  left_join(
+    Leicester_renamed %>% select(OA11CD, all_of(age_cols)),
+    by = "OA11CD"
+  )
+# List Age_midpoints
+age_midpoints <- c(
+  Age_0_to_4 = 2,
+  Age_5_to_9 = 7,
+  Age_10_to_14 = 12,
+  Age_15_to_19 = 17,
+  Age_20_to_24 = 22,
+  Age_25_to_29 = 27,
+  Age_30_to_44 = 37,
+  Age_45_to_59 = 52,
+  Age_60_to_64 = 62,
+  Age_65_to_74 = 70,
+  Age_75_to_84 = 80,
+  Age_85_to_89 = 87,
+  Age_90_and_over = 92
+)
+# Compute Average Age first
+Leicester_housing <- Leicester_housing %>%
+  mutate(
+    Average_Age = (as.matrix(select(., all_of(age_cols))) %*% age_midpoints) /
+                  rowSums(select(., all_of(age_cols)), na.rm = TRUE)
+  )
+# Compute tenure proportions
+Leicester_housing <- Leicester_housing %>%
+  mutate(
+    Owner_Occupied_Percent = (Total_Households - (Social_rented + Private_rented)) / Total_Households * 100,
+    Renting_Households_Percent = (Social_rented + Private_rented) / Total_Households * 100
+  )
+
+# Summarize average age and
+# using tenure proportions
+Age_housing_summary <- Leicester_housing %>%
+  summarise(
+    avg_age = mean(Average_Age, na.rm = TRUE),
+    owner_occupied_percent = mean(Owner_Occupied_Percent, na.rm = TRUE),
+    rented_percent = mean(Renting_Households_Percent, na.rm = TRUE)
+  )
+View(Age_housing_summary)
+```
+
+**Interpretation of relationship between age and tenure type**
+1. Younger populations may be more likely to rent due to factors such as job mobility, lower income levels, and lifestyle preferences. Conversely, older populations may be more inclined to own their homes, reflecting greater financial stability and long-term investment in the community.
+2. The relationship between age and tenure type can also be influenced by economic conditions, such as housing affordability and availability. Younger individuals may face challenges in entering the housing market, leading to higher rental rates among this demographic.
+
+*Understanding the relationship between age and housing tenure can inform housing policies and programs aimed at addressing the needs of different age groups, such as affordable rental housing for younger populations and support for homeownership among older residents.*
+
+```{r}
+# Create a Deprivation Score
+# Add education variables to Leicester_housing
+education_cols <- c(
+  "No_qualifications",
+  "Highest_level_of_qualification_Level_1_Level_2_or_Apprenticeship",
+  "Highest_level_of_qualification_Level_3_qualifications",
+  "Highest_level_of_qualification_Level_4_qualifications_and_above",
+  "Schoolchildren_and_fulltime_students_Age_16_and_over"
+)
+Leicester_housing <- Leicester_housing %>%
+  left_join(
+    Leicester_renamed %>% select(OA11CD, all_of(education_cols)),
+    by = "OA11CD"
+  )
+
+# Compute low education percent
+Leicester_housing <- Leicester_housing %>%
+  mutate(
+    Low_Education = No_qualifications + Highest_level_of_qualification_Level_1_Level_2_or_Apprenticeship,
+    Low_Education_Percent = Low_Education / Total_Population_in_Households_16_and_over * 100
+  )
+
+# Compute unemployment percent
+Leicester_housing <- Leicester_housing %>%
+  mutate(
+    Unemployment = Total_Unemployed,
+    Unemployment_Percent = Total_Unemployed / Total_Population_in_Households_16_and_over * 100
+  )
+
+# Standardize the variables
+Leicester_housing <- Leicester_housing %>%
+  mutate(
+    z_unemployed = scale(Unemployment_Percent),
+    z_low_educ = scale(Low_Education_Percent),
+    z_renting = scale(Renting_Households_Percent)
+  )
+# Create deprivation score
+Leicester_housing <- Leicester_housing %>%
+  mutate(
+    Deprivation_Score = rowMeans(cbind(z_unemployed, z_low_educ, z_renting), na.rm = TRUE)
+  )
+
+# Summarize averages and arrange from most to least deprived
+Deprivation_summary <- Leicester_housing %>%
+  summarise(
+    avg_deprivation = mean(Deprivation_Score, na.rm = TRUE),
+    avg_unemployed = mean(Unemployment_Percent, na.rm = TRUE),
+    avg_low_educ = mean(Low_Education_Percent, na.rm = TRUE),
+    avg_renting = mean(Renting_Households_Percent, na.rm = TRUE)
+  )
+
+View(Deprivation_summary)
+
+# Arrange OAs by most to least deprived
+Leicester_deprivation_ranked <- Leicester_housing %>%
+  arrange(desc(Deprivation_Score)) %>%
+  select(OA11CD, Deprivation_Score, Unemployment_Percent, Low_Education_Percent, Renting_Households_Percent)
+
+View(Leicester_deprivation_ranked)
+```
+
+**Interpretation of Deprivation Score**
+1. The Deprivation Score combines multiple socio-economic indicators, providing a holistic view of deprivation within Leicester. This allows for the identification of areas facing multiple challenges, such as high unemployment, low educational attainment, and high rental rates.
+2. Areas with high Deprivation Scores may require targeted interventions to address the underlying issues contributing to deprivation. This could include job creation programs, educational initiatives, and affordable housing strategies to improve overall living conditions.
+
+*Understanding the distribution of deprivation across Leicester can inform resource allocation decisions, ensuring that support is directed to the areas most in need. This can help reduce inequalities and promote social cohesion within the community.*
+
+```{r}
+# Join data with lookup file to add full variable descriptions
+# Using pivot_longer()
+# define all ID columns
+id_cols <- c(
+  "OA11CD", "LSOA11CD", "LSO11ANM", "MSOA11CD", "MSOA11NM", 
+  "LAD11CD", "LAD11NM", "supgrpcode", "supgrpname", 
+  "grpcode", "grpname", "subgrpcode", "subgrpname"
+)
+
+# Select numeric columns only
+num_cols <- Leicester_renamed %>%
+  select(-all_of(id_cols)) %>%
+  select(where(is.numeric)) %>%
+  colnames()
+
+# Pivot numeric columns
+Leicester_long <- Leicester_renamed %>%
+  pivot_longer(
+    cols = all_of(num_cols),
+    names_to = "VariableCode",
+    values_to = "Value"
+  ) %>%
+  left_join(
+    Lookup %>%
+      select(VariableCode, VariableTitle, VariableDescription, VariableDomain) %>%
+      distinct(VariableCode, .keep_all = TRUE),
+    by = "VariableCode"
+  )
+
+View(Leicester_long)
+
+# Using pivot_wider()
+# Prepare Lookup to keep unique VariableCode rows
+Lookup_unique <- Lookup %>%
+  select(VariableCode, VariableTitle, VariableDescription, VariableDomain) %>%
+  distinct(VariableCode, .keep_all = TRUE)
+
+# Join Lookup to wide dataset
+Leicester_wide <- Leicester_renamed %>%
+  left_join(
+    Lookup_unique,
+    by = c("OA11CD" = "VariableCode")  
+  )
+
+View(Leicester_wide)
+```
+
+**Summary Report highlighting major insights**
+This report presents an analysis of Leicester’s Output Area(OA) housing and socio-economic characteristics, using data from the **2011 Census** using the datasets **011_OAC_Raw_uVariables_Leicester.csv** and **2011_OAC_Raw_uVariables_Lookup.csv**.
+
+Key indicators analyzed include **housing tenure**, **population age structure**, **education levels and attainment**, **unemployment**, **renting patterns**, **Housing Stress Index** and **Deprivation Score**.
+
+The aim is to identify areas of high housing stress and socio-economic deprivation, and highlight patterns relevant for policy and planning.
+
+**Major insights include:**
+1. **Housing Tenure**: Owner-occupied households dominate the city, but a substantial proportion of households are rented (social and private).
+A significant portion of households in Leicester are rented, with of households in certain Output Areas (OAs) being rented. This indicates potential challenges related to housing stress in terms of affordability, particularly in areas with high rental rates.
+
+2. **Household Size**: There is considerable variation in average household sizes across different OAs, with some areas exhibiting very high average household sizes (≥4). This may suggest overcrowding or multi-generational living arrangements, which can have implications for housing quality and access to services.
+
+3.  **Unemployment**: Percent unemployed was calculated relative to the working-age population 16 and over. Certain OAC groups exhibit notably high average unemployment rates, which may be linked to economic vulnerabilities and skill mismatches in the local labor market. Targeted employment programs may be necessary to address these disparities.
+
+4.  **Housing Stress**: The Housing Stress Index (HSI) was calculated as **(Renting households % / Owner-occupied %) × 100**. The Housing Stress Index reveals that some OAC Supergroups experience significant housing stress, with high proportions of renting households relative to owner-occupied households. This highlights the need for affordable housing initiatives and support for renters.
+
+5.  **Population Density**: Leicester exhibits significant variation in population density across OAs. Areas above the city’s average density were identified for targeted socio-economic analysis. Areas with above-average population density may face challenges related to overcrowding, resource strain, and housing affordability. These areas may require additional infrastructure and services to support the growing population.
+
+6.  **Age and Tenure**: There is a clear relationship between age and housing tenure, with younger populations more likely to rent and older populations more likely to own their homes. This has implications for housing policy and the provision of age-appropriate housing options.
+
+7.  **Deprivation**: A Deprivation Score was computed by standardizing and averaging Low Education percentage, Unemployment percentage and Renting percentage. The Deprivation Score highlights areas facing multiple socio-economic challenges, including high unemployment, low educational attainment, and high rental rates. These areas may benefit from comprehensive social and economic interventions to improve living conditions and reduce inequalities.
+
+8. **Low Education**:
+Calculated as the proportion of residents aged 16–74 with no qualifications or only Level 1/2/apprenticeships.
+Low educational attainment is a significant concern in certain areas, with high percentages of the population lacking qualifications. This may impact employability and economic mobility, necessitating targeted educational programs and support services.
+
+*In conclusion, the analysis of Leicester's housing data underscores the importance of targeted policy interventions to address community planning, housing affordability, economic vulnerability, education support and other social disparities within the community.*
+
+###### Visualizations
+
+```{r}
+# Population Density Distribution
+ggplot(Leicester_housing, aes(x = `Density_(number_of_persons_per_hectare)`)) +
+  geom_histogram(binwidth = 50, fill = "skyblue", color = "white") +
+  labs(
+    title = "Population Density Distribution Across Leicester OAs",
+    x = "Population Density (persons per hectare)",
+    y = "Number of OAs"
+  ) +
+  theme_minimal()
+```
+
+**Interpretation of population density distribution**
+
+The histogram illustrates the distribution of population density across Leicester's Output Areas (OAs). The data shows a right-skewed distribution, with a majority of OAs having lower population densities, while a smaller number of OAs exhibit very high densities.
+
+This suggests that while many areas maintain a more suburban or rural character, there are pockets of high-density living, likely in urban centers.\
+
+*Understanding this distribution is crucial for urban planning and resource allocation, as high-density areas may require more infrastructure and services to support their populations effectively.*
+
+```{r}
+# Housing Tenure Distribution box plot
+ggplot(Leicester_housing, aes(x = "", y = Owner_Occupied_Percent, fill = "Owner Occupied")) +
+  geom_boxplot() +
+  labs(title = "Distribution of Owner-Occupied Households",
+       y = "Owner-Occupied (%)") +
+  theme_minimal()
+```
+
+**Interpretation of housing tenure distribution** The box plot illustrates the distribution of owner-occupied households across Leicester's Output Areas (OAs). The median value indicates that a more significant portion of households are owner-occupied, suggesting a level of economic stability and investment in the community. However, the presence of outliers and the spread of the data highlight variability in homeownership rates, which may reflect differing economic conditions and housing market dynamics across various areas.\
+*This information is crucial for understanding housing affordability and planning for future housing needs in Leicester.*
+
+```{r}
+# Bar chart of housing tenure proportions
+# Summarize average tenure across all OAs
+tenure_summary <- Leicester_housing %>%
+  summarise(
+    Owner_Occupied = mean(Owner_Occupied_Percent, na.rm = TRUE),
+    Rented = mean(Renting_Households_Percent, na.rm = TRUE)
+  ) %>%
+  pivot_longer(cols = everything(), names_to = "Tenure", values_to = "Percent")
+
+# Bar plot
+ggplot(tenure_summary, aes(x = Tenure, y = Percent, fill = Tenure)) +
+  geom_col() +
+  geom_text(aes(label = paste0(round(Percent, 1), "%")),  # Adds percent sign
+            vjust = -0.5) +
+  labs(
+    title = "Average Housing Tenure Proportions in Leicester",
+    y = "Percentage",
+    x = "Tenure system"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 45, hjust = 1)  # Rotates x labels at an angle
+  ) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.15)))  # add extra space for labels
+```
+
+**Interpretation of housing tenure proportions**
+
+The bar chart illustrates the average housing tenure proportions in Leicester, revealing that owner-occupied households constitute a larger share compared to rented households. ***This suggests a relatively stable housing market with a significant portion of residents investing in homeownership***. However, the presence of a substantial rental market indicates diversity in housing needs and preferences within the community.
+
+```{r}
+# Histogram of average age across OAs
+ggplot(Leicester_housing, aes(x = Average_Age)) +
+  geom_histogram(binwidth = 2, fill = "steelblue", color = "white") +
+  labs(
+    title = "Distribution of Average Age Across Leicester OAs",
+    x = "Average Age",
+    y = "Number of OAs"
+  ) +
+  theme_minimal()
+```
+
+**Interpretation of average age distribution**
+
+The histogram illustrates the distribution of average ages across Leicester's Output Areas (OAs). The data shows a concentration of OAs with average ages between 20 and 40, indicating a relatively young population in many areas. There are also notable peaks around ages 10-15 and 60-70, suggesting the presence of both younger families and older adults.\
+
+*This age distribution has implications for local services, housing needs, and community planning, as different age groups may require varying types of support and infrastructure.*
+
+```{r}
+# Bar chart of average household composition
+
+# Summarise averages of household types
+household_types <- Leicester_housing %>%
+  summarise(across(
+    c(
+      One_person_household_Other,
+      One_family_only_Married_or_samesex_civil_partnership_couple_Dependent_children,
+      One_family_only_Lone_parent_Dependent_children,
+      Other_household_types_Other
+    ),
+    ~ mean(.x, na.rm = TRUE)
+  )) %>%
+  pivot_longer(
+    everything(),
+    names_to = "Household_Type",
+    values_to = "Percent"
+  ) %>%
+  # Clean up/shorten long labels
+  mutate(Household_Type = case_when(
+    Household_Type == "One_person_household_Other" ~ "One-person household",
+    Household_Type == "One_family_only_Married_or_samesex_civil_partnership_couple_Dependent_children" ~ "Married/same-sex couple\nwith dependent children",
+    Household_Type == "One_family_only_Lone_parent_Dependent_children" ~ "Lone parent\nwith dependent children",
+    Household_Type == "Other_household_types_Other" ~ "Other household types",
+    TRUE ~ Household_Type
+  ))
+
+# Plot the average household composition bar chart
+ggplot(household_types, aes(x = reorder(Household_Type, Percent), y = Percent, fill = Household_Type)) +
+  geom_col() +
+  geom_text(aes(label = paste0(round(Percent, 1), "%")),   # Adds percent sign
+            hjust = -0.1) +
+  coord_flip() +
+  labs(
+    title = "Average Household Composition", 
+    x = "Household Type",
+    y = "Average composition (%)"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text.y = element_text(size = 10)
+  ) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.15)))  # Adds extra space for labels
+```
+
+**Interpretation of household composition**
+
+The bar chart illustrates the average household composition in Leicester, highlighting that one-person households constitute the largest proportion, followed by married or same-sex couples with dependent children. Lone parent households and other household types make up smaller proportions.\
+
+*This distribution reflects diverse living arrangements within the community, which may influence housing needs and social services.*
+
+```{r}
+# Scatter plot of  Housing Stress Index by Deprivation Score
+ggplot(Leicester_housing, aes(x = Deprivation_Score, y = Housing_Stress_Index)) +
+  geom_point(alpha = 0.6, color = "tomato") +
+  geom_smooth(method = "lm", se = FALSE, color = "steelblue") +
+  labs(title = "Relationship Between Deprivation and Housing Stress",
+       x = "Deprivation Score", y = "Housing Stress Index") +
+  theme_minimal()
+```
+
+**Interpretation of deprivation vs housing stress**
+
+The scatter plot illustrates a positive correlation between Deprivation Score and Housing Stress Index, indicating that areas with higher deprivation tend to experience greater housing stress.\
+
+*This suggests that socio-economic challenges are closely linked to housing affordability and stability in Leicester.*
+
+```{r}
+# Age composition horizontal bar chart
+library(viridis)
+library(tidyr)
+
+age_cols <- Leicester_housing %>%
+  select(starts_with("Age_")) %>%
+  summarise(across(everything(), \(x) mean(x, na.rm = TRUE))) %>%
+  pivot_longer(everything(), names_to = "Age_Group", values_to = "Population")
+
+ggplot(age_cols, aes(x = Age_Group, y = Population, fill = Population)) +
+  geom_col() +
+  coord_flip() +
+  scale_fill_viridis_c() +
+  labs(title = "Average Age Distribution Across Leicester") +
+  theme_minimal()
+```
+
+**Interpretation of age distribution**
+
+The horizontal bar chart illustrates the average age distribution across Leicester, highlighting that the largest age groups are 30-44 and 45-59. ***This suggests a significant portion of the population is in their prime working years, which may influence local economic activity and housing demand***. The presence of younger age groups (0-14) also indicates a need for family-oriented services and infrastructure.
+
+```{r}
+# Correlation Heatmap
+# Select relevant numeric variables
+num_data <- Leicester_housing %>%
+  select(Owner_Occupied_Percent, Renting_Households_Percent,
+         Housing_Stress_Index, Deprivation_Score, Average_Age)
+
+# Compute correlation matrix
+cor_mat <- round(cor(num_data, use = "complete.obs"), 2)
+
+# Convert to tidy (long) format for ggplot
+cor_data <- as.data.frame(as.table(cor_mat))
+colnames(cor_data) <- c("Variable_A", "Variable_B", "Correlation")
+
+# Create ggplot heatmap
+ggplot(cor_data, aes(x = Variable_A, y = Variable_B, fill = Correlation)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = Correlation), color = "black", size = 4) +
+  scale_fill_gradient2(low = "red", mid = "white", high = "green", midpoint = 0) +
+  labs(
+    title = "Correlation Heatmap of Key Housing Variables",
+    fill = "Correlation"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid = element_blank()
+  )
+```
+
+**Interpretation of correlation heatmap**
+
+The correlation heatmap reveals several key relationships among housing variables in Leicester. Notably, there is a strong negative correlation between Owner_Occupied_Percent and Renting_Households_Percent, indicating that as the proportion of owner-occupied households increases, the proportion of rented households decreases.
+
+Additionally, Housing_Stress_Index shows a positive correlation with Deprivation_Score, suggesting that areas with higher deprivation tend to experience greater housing stress. Average_Age has a moderate positive correlation with Owner_Occupied_Percent, indicating that older populations are more likely to own their homes.\
+
+*These insights can inform housing policies and interventions aimed at addressing affordability and stability in the community.*
+
+```{r}
+# Deprivation vs Employment Scatter Plot
+ggplot(Leicester_housing, aes(x = Deprivation_Score, y = Total_Employed)) +
+  geom_point(alpha = 0.5, color = "blue") +
+  geom_smooth(method = "lm", color = "red") +
+  labs(title = "Deprivation vs Employment", x = "Deprivation Score", y = "Total_Employed")
+```
+
+**Interpretation of deprivation vs employment**
+
+The scatter plot illustrates a negative correlation between Deprivation Score and Total Employed, indicating that areas with higher deprivation tend to have lower employment levels.\
+
+*This suggests that socio-economic challenges are closely linked to employment opportunities in Leicester.*
+
+```{r}
+# Deprivation vs Unemployment Scatter plot
+ggplot(Leicester_housing, aes(x = Deprivation_Score, y = Total_Unemployed)) +
+  geom_point(alpha = 0.5, color = "blue") +
+  geom_smooth(method = "lm", color = "red") +
+  labs(title = "Deprivation vs Unemployment", x = "Deprivation Score", y = "Total_Unemployed")
+```
+
+**Interpretation of deprivation vs unemployment**
+
+The scatter plot illustrates a positive correlation between Deprivation Score and Total Unemployed, indicating that areas with higher deprivation tend to have higher unemployment levels.\
+
+*This suggests that socio-economic challenges are closely linked to employment opportunities in Leicester.*
+
+
+```{r}
+# Education vs Unemployment Scatter plot
+ggplot(Leicester_housing, aes(x = Low_Education_Percent, y = Total_Unemployed)) +
+  geom_point(alpha = 0.5, color = "blue") +
+  geom_smooth(method = "lm", color = "red") +
+  labs(title = "Education vs Unemployment", x = "Low Education Percent", y = "Total_Unemployed")
+```
+
+**Interpretation of education vs unemployment**
+The scatter plot illustrates a positive correlation between Low Education Percent and Total Unemployed, indicating that areas with higher proportions of low educational attainment tend to have higher unemployment levels.
+
+*This suggests that educational attainment is closely linked to employment opportunities in Leicester.* 
+
+```{r}
+# Education vs Employment Scatter plot
+ggplot(Leicester_housing, aes(x = Low_Education_Percent, y = Total_Employed)) +
+  geom_point(alpha = 0.5, color = "blue") +
+  geom_smooth(method = "lm", color = "red") +
+  labs(title = "Education vs Employment", x = "Low Education Percent", y = "Total_Employed") +
+  theme_minimal()
+```
+
+**Interpretation of education vs employment**
+The scatter plot illustrates a negative correlation between Low Education Percent and Total Employed, indicating that areas with higher proportions of low educational attainment tend to have lower employment levels.
+
+*This suggests that educational attainment is closely linked to employment opportunities in Leicester.*
+
+```{r}
+# Deprivation score map
+# Load necessary libraries
+library(sf)
+library(tmap)
+library(cols4all)
+library(rmapshaper)
+
+# Load shapefile
+leic_shp <- st_read("~/Desktop/RStudio_CW/infuse_oa_lyr_2011.shp")
+
+# Rename geo_code to match housing dataset
+leic_shp <- leic_shp %>%
+  rename(OA11CD = geo_code)
+# Which polygons are invalid?
+invalid <- !st_is_valid(leic_shp)
+sum(invalid)  # how many polygons are invalid
+
+# Attempt to fix
+leic_shp <- st_make_valid(leic_shp)
+# Keep track of invalid polygons
+invalid_idx <- which(!st_is_valid(leic_shp))
+
+# Fix only the invalid ones
+leic_shp[invalid_idx, ] <- st_make_valid(leic_shp[invalid_idx, ])
+all_valid <- all(st_is_valid(leic_shp))
+all_valid  # should return TRUE
+
+# Join with Leicester_housing dataset
+leic_map_data <- leic_shp %>%
+  left_join(
+    Leicester_housing,
+    by = "OA11CD"
+  )
+
+# Plot the map
+# 1. Fix geometry if needed
+leic_shp <- st_make_valid(leic_shp)
+
+# 2. Simplify polygons (keep 2% of points)
+leic_shp_simp <- ms_simplify(leic_shp, keep = 0.01)
+
+# 3. Set static plotting mode
+tmap_mode("plot")
+
+# 4. Deprivation Score Map
+tm_deprivation <- tm_shape(leic_shp_simp) +
+  tm_polygons(
+    "Deprivation_Score",
+    fill.scale = tm_scale(values = "brewer.blues", n = 5),  # 5 bins
+    col_alpha = 0.7,
+    fill.legend = tm_legend(title = "Deprivation Score")
+  ) +
+  tm_title("Deprivation Score Across Leicester", size = 1) +
+  tm_credits(
+    "Source: Leicester Housing Data & Census 2011",
+    position = c("LEFT", "BOTTOM"),
+    size = 0.7
+  ) +
+  tm_layout(frame = FALSE)
+
+tmap_save(tm_deprivation, "Deprivation_Map.png", width = 2500, height = 1800, dpi = 150)
+```
+
+
+
+```{r}
+# Housing Stress Index Map
+tm_housing_stress <- tm_shape(leic_shp_simp) +
+  tm_polygons(
+    "Housing_Stress_Index",
+    fill.scale = tm_scale(values = "brewer.reds", n = 5),   # 5 bins
+    col_alpha = 0.7,
+    fill.legend = tm_legend(title = "Housing Stress Index")
+  ) +
+  tm_title("Housing Stress Index Across Leicester", size = 1) +
+  tm_credits(
+    "Source: Leicester Housing Data & Census 2011",
+    position = c("LEFT", "BOTTOM"),
+    size = 0.7
+  ) +
+  tm_layout(frame = FALSE)
+
+tmap_save(tm_housing_stress, "Housing_Stress_Map.png", width = 2500, height = 1800, dpi = 150)
+```
+  
+  
+```{r}
+# Bar chart of tenure category and total population
+# Select tenure columns and sum them
+# Select tenure columns and sum population 16+ in each
+tenure_summary <- Leicester_housing %>%
+  select(
+    Owned_and_Shared_Ownership,
+    Social_rented,
+    Private_rented,
+    Living_rent_free
+  ) %>%
+  summarise(across(everything(), sum, na.rm = TRUE)) %>%
+  pivot_longer(
+    everything(),
+    names_to = "Tenure",
+    values_to = "Total_Population_16_and_over"
+  )
+
+# Plot the bar chart
+ggplot(tenure_summary, aes(x = Tenure, y = Total_Population_16_and_over, fill = Tenure)) +
+  geom_col() +
+  geom_text(aes(label = Total_Population_16_and_over), vjust = -0.5) +
+  labs(
+    title = "Population 16+ by Housing Tenure in Leicester",
+    x = "Tenure Category",
+    y = "Population 16+"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+  
+**Interpretation of tenure category and total population**
+The bar chart illustrates the total population aged 16 and over by housing tenure in Leicester. The data shows that the majority of this population resides in owner-occupied or shared ownership housing, followed by social rented and private rented accommodations. A smaller proportion lives rent-free.
+*This distribution reflects the housing preferences and economic conditions of Leicester's residents, highlighting the importance of homeownership while also indicating a significant rental market.*
